@@ -1055,13 +1055,11 @@ function saveRecord(){
   if(isGood){
     document.getElementById("saved-icon").textContent="🫧";
     document.getElementById("saved-title").textContent="記録しました！";
-    document.getElementById("saved-msg").textContent="血便なし "+streak+"日連続です。
-シャボン玉がもう一つ、ふわりと増えました。";
+    document.getElementById("saved-msg").textContent="血便なし "+streak+"日連続です。シャボン玉がもう一つ、ふわりと増えました。";
   } else {
     document.getElementById("saved-icon").textContent="💙";
     document.getElementById("saved-title").textContent="記録しました";
-    document.getElementById("saved-msg").textContent="つらい日も、記録してくれてありがとう。
-この記録が、次の診察できっと役に立ちます。";
+    document.getElementById("saved-msg").textContent="つらい日も、記録してくれてありがとう。この記録が、次の診察できっと役に立ちます。";
   }
   sc.className="saved-card show";sc.scrollIntoView({behavior:"smooth"});
   setTimeout(function(){sc.className="saved-card";},5000);
@@ -1297,26 +1295,8 @@ async function connSubmit(){
   if(!txt||!connStage)return;
   var btn=document.getElementById('conn-submit');
   btn.disabled=true;btn.textContent='🫧 確認中…';
-  var prompt='あなたは「ふわりととどく」の投稿チェックAIです。IBDと闘う子どもや家族が匿名でつぶやける場所です。
-
-【投稿不可（ng）】
-・他者への攻撃・誹謗中傷
-・個人が特定できる情報
-・商品・サービスの宣伝
-・自傷・希死念慮を示す表現
-・読む人が深く傷つく絶望的な表現
-
-【要注意（warn）】
-・強い苦しみが表現されているが攻撃性はない
-
-【投稿可（ok）】
-・誠実な気持ちの表現
-
-以下のJSONのみで返してください：
-{"verdict":"ok|warn|ng","support":"warnまたはngの場合の温かいメッセージ（50字以内）"}
-
-【投稿内容】
-'+txt;
+  var prompt='あなたは「ふわりととどく」の投稿チェックAIです。投稿不可：攻撃・個人情報・商品宣伝・自傷表現・絶望的内容。要注意：強い苦しみ。投稿可：誠実な気持ち。JSONのみ返してください：{"verdict":"ok|warn|ng","support":"50字以内のメッセージ"}
+投稿内容：'+txt;
   try{
     var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:200,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();
@@ -1378,9 +1358,7 @@ async function doTranslate(blogId, fromLang, body){
     return;
   }
   btn.disabled=true;btn.textContent='翻訳中…';
-  var prompt='以下のIBD患者・家族のブログを日本語に翻訳してください。医療用語はそのままにしてください。翻訳文のみ返してください。
-
-'+body;
+  var prompt='以下のIBD患者・家族のブログを日本語に翻訳してください。医療用語はそのままにしてください。翻訳文のみ返してください。\n\n'+body;
   try{
     var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();
