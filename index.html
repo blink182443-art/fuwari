@@ -647,6 +647,8 @@ textarea.rec-input{resize:none;height:80px;line-height:1.7}
 <input type="file" id="file-library" accept="image/*" onchange="handlePhoto(this)">
 
 <script>
+window.addEventListener('DOMContentLoaded', function(){
+try{
 if('serviceWorker' in navigator) window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});
 var isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone;
 var isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -672,7 +674,12 @@ var MSGS=[
 ];
 function negHTML(m){return m.text.replace(/\n/g,"<br>")+'<br><span style="font-size:10px;color:#bbb;display:block;margin-top:4px;">'+m.to+"</span>";}
 var neg=MSGS[Math.floor(Math.random()*MSGS.length)];
-["top-neg","search-neg","quiz-neg","rec-neg"].forEach(function(id){var el=document.getElementById(id);if(el)el.innerHTML=negHTML(neg);});
+try{
+  ["top-neg","search-neg","quiz-neg","rec-neg"].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.innerHTML=negHTML(neg);
+  });
+}catch(e){ console.log('neg error:',e); }
 
 // ===== オンボーディング =====
 var obCurrent = 0;
@@ -735,7 +742,14 @@ function obFinish(){
 
 setTimeout(function(){ obInitDots(); obUpdateBtn(); }, 200);
 
-function go(id){document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("active");});document.getElementById(id).classList.add("active");window.scrollTo(0,0);}
+function go(id){
+  try{
+    document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("active");});
+    var el=document.getElementById(id);
+    if(el) el.classList.add("active");
+    window.scrollTo(0,0);
+  }catch(e){ console.log('go error:',e,id); }
+}
 function toggleLang(){document.getElementById("lang-panel").classList.toggle("open");}
 function setLang(l,el){document.querySelectorAll(".lang-opt").forEach(function(o){o.classList.remove("chosen");});el.classList.add("chosen");document.getElementById("lang-toggle").textContent="🌐 "+l;document.getElementById("lang-panel").classList.remove("open");}
 document.addEventListener("click",function(e){if(!e.target.closest(".lang-btn")&&!e.target.closest(".lang-panel")){var p=document.getElementById("lang-panel");if(p)p.classList.remove("open");}});
@@ -1219,7 +1233,7 @@ var CONN_POSTS = [
 var connFilter='all'; var connStage=null; var connMode='watch';
 
 // ねぎらいをつながる画面にも
-document.getElementById('connect-neg').innerHTML=negHTML(neg);
+try{var cn=document.getElementById('connect-neg');if(cn)cn.innerHTML=negHTML(neg);}catch(e){}
 
 function setConnMode(mode){
   connMode=mode;
@@ -1379,6 +1393,8 @@ async function doTranslate(blogId, fromLang, body){
     alert('翻訳に失敗しました。');
   }
 }
+}catch(e){ console.error('App error:',e); }
+}); // DOMContentLoaded
 </script>
 </body>
 </html>
