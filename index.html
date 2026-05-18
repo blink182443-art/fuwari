@@ -652,14 +652,14 @@ var isStandalone=window.matchMedia('(display-mode: standalone)').matches||window
 var isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
 if(isIOS&&!isStandalone){document.getElementById('install-banner').style.display='flex';}
 
-// オンボーディング：初回起動チェック
-function checkOnboarding(){
-  try{
-    var done=localStorage.getItem('fuwari_onboarded');
-    if(!done){ go('s-onboard'); }
-  }catch(e){}
-}
-setTimeout(checkOnboarding, 100);
+// オンボーディング：初回起動チェック（一時的に無効化）
+// function checkOnboarding(){
+//   try{
+//     var done=localStorage.getItem('fuwari_onboarded');
+//     if(!done){ go('s-onboard'); }
+//   }catch(e){}
+// }
+// setTimeout(checkOnboarding, 100);
 
 var MSGS=[
   {text:"今日も、そばにいてくれてありがとう。\nあなたがいるから、この子は安心できる。",to:"— 付き添い入院の親御さんへ"},
