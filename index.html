@@ -1295,8 +1295,7 @@ async function connSubmit(){
   if(!txt||!connStage)return;
   var btn=document.getElementById('conn-submit');
   btn.disabled=true;btn.textContent='🫧 確認中…';
-  var prompt='あなたは「ふわりととどく」の投稿チェックAIです。投稿不可：攻撃・個人情報・商品宣伝・自傷表現・絶望的内容。要注意：強い苦しみ。投稿可：誠実な気持ち。JSONのみ返してください：{"verdict":"ok|warn|ng","support":"50字以内のメッセージ"}
-投稿内容：'+txt;
+  var prompt='あなたは投稿チェックAIです。投稿不可：攻撃・個人情報・商品宣伝・自傷・絶望的内容。投稿可：誠実な気持ち。JSON: {"verdict":"ok|warn|ng","support":"msg"} 投稿内容：'+txt;
   try{
     var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:200,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();
