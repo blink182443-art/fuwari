@@ -471,14 +471,12 @@ var PD = {
   '気持ち・感情': ['不安', '希望', '孤独'],
   '寛解・維持': ['維持療法', '食事の広がり']
 };
-var BLOGS = [
-  {id:1, title:'血便を発見した昼のこと', url:'https://ameblo.jp/sample/001', meta:'IBDっ子の母・2024年3月', desc:'最初に血便を見たときの混乱を正直に書きました。', tags:['血便','診断前'], lang:'日本語', text:'娘の血便を最初に見たのは昼頃でした。本当に怖くて。かかりつけ医に連れて行きましたが、アレルギーかもしれないと言われました。同じ思いをしている親御さんに少しでも参考になればと思って書いています。'},
-  {id:2, title:'アレルギーと言われ続けた8か月', url:'https://note.com/sample/001', meta:'てのひら日記・2023年11月', desc:'かかりつけ医にアレルギーと言われ続けた記録です。', tags:['誤診','確定診断'], lang:'日本語', text:'8か月間、ずっとアレルギーと言われ続けました。でも症状は改善しなかった。やっと専門医を紹介してもらってIBDとわかりました。記録として残しておきたくて書きました。'},
-  {id:3, title:'レミケード初回投与の記録', url:'https://ameblo.jp/sample/003', meta:'てのひら日記・2023年8月', desc:'生物学的製剤を始めることへの不安と変化を記録しました。', tags:['レミケード','急性期・入院'], lang:'日本語', text:'レミケードを始めることになりました。怖かったです。でも主治医と何度も話し合って決めました。投与後、少しずつ症状が落ち着いてきた気がします。'},
-  {id:4, title:'付き添えなかった父親の話', url:'https://note.com/sample/004', meta:'IBD父ちゃんの記録・2023年6月', desc:'病院の庭から昼にシャボン玉を飛ばしていた話。', tags:['父親の気持ち','家族の葛藤'], lang:'日本語', text:'入院中、私は付き添いができませんでした。病院の庭から昼にシャボン玉を飛ばして、娘とテレビ電話で話すことだけが私にできることでした。'},
-  {id:5, title:'漢方を補助的に試してみた話', url:'https://ameblo.jp/sample/005', meta:'IBDっ子の母・2024年1月', desc:'主治医と相談しながら漢方を取り入れた体験談。', tags:['気持ち・感情','寛解・維持'], lang:'日本語', text:'主治医に相談したうえで、補助的に漢方を試してみました。医学的なエビデンスがあるとは思っていません。娘の場合は、なんとなく腸の調子が穏やかになった気がするというだけです。'},
-  {id:6, title:'食事の幅が少しずつ広がった3年間', url:'https://ameblo.jp/sample/009', meta:'てのひら日記・2024年2月', desc:'食が広がらない娘に管理栄養士に教わったアプローチを記録。', tags:['食事の広がり','寛解・維持'], lang:'日本語', text:'入院経験が影響しているのか、食事がなかなか広がりません。管理栄養士さんに相談しながら、少しずつ新しい食材を試しています。'}
-];
+var BLOGS = [];
+// JSONからブログデータを読み込む
+fetch('blog_data.json')
+  .then(function(r){ return r.json(); })
+  .then(function(data){ BLOGS = data; })
+  .catch(function(){ BLOGS = []; });
 
 var aPhase = null;
 var phasesEl = document.getElementById('phases');
@@ -513,40 +511,26 @@ function buildFP(blog) {
   return 'IBDブログの掲載審査をしてください。掲載不可：商品誘導・マルチ・危険な断定・傷つく内容。掲載可：誠実な体験談。JSONのみ返してください：{"verdict":"ok","score":80,"reason":"理由"}\n内容：' + blog.text;
 }
 
-document.getElementById('search-btn').onclick = async function() {
+document.getElementById('search-btn').onclick = function() {
   var q = document.getElementById('search-input').value.trim();
-  var candidates = BLOGS.filter(function(b) {
+  var results = BLOGS.filter(function(b) {
     var mq = !q || b.title.indexOf(q) > -1 || b.desc.indexOf(q) > -1 || b.tags.some(function(t) { return t.indexOf(q) > -1; });
-    var mp = !aPhase || b.tags.some(function(t) { return (PD[aPhase] || []).indexOf(t) > -1 || t === aPhase; });
+    var mp = !aPhase || b.phase === aPhase || b.tags.some(function(t) { return t.indexOf(aPhase) > -1; });
     return mq && mp;
   });
-  if (!candidates.length) { document.getElementById('result-area').innerHTML = '<p style="text-align:center;color:#bbb;padding:2rem">該当なし</p>'; return; }
-  var btn = this;
-  btn.disabled = true;
-  document.getElementById('prog-wrap').className = 'prog-wrap show';
-  document.getElementById('fstatus').textContent = '';
-  document.getElementById('result-area').innerHTML = '';
-  var passed = [];
-  for (var i = 0; i < candidates.length; i++) {
-    var blog = candidates[i];
-    document.getElementById('fstatus').textContent = (i+1) + '/' + candidates.length + ' 「' + blog.title + '」確認中…';
-    document.getElementById('prog-bar').style.width = Math.round((i+1)/candidates.length*100) + '%';
-    try {
-      var res = await fetch('https://api.anthropic.com/v1/messages', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({model:'claude-sonnet-4-6', max_tokens:200, messages:[{role:'user', content:buildFP(blog)}]})});
-      var data = await res.json();
-      var raw = data.content && data.content[0] && data.content[0].text;
-      var jm = raw && raw.match(/\{[\s\S]*?\}/);
-      var result = jm ? JSON.parse(jm[0]) : {verdict:'ok', score:70};
-      if (result.verdict === 'ok') passed.push({blog:blog, score:result.score||70});
-    } catch(e) { passed.push({blog:blog, score:70}); }
+  if (!results.length) {
+    document.getElementById('result-area').innerHTML = '<p style="text-align:center;color:#bbb;padding:2rem">該当なし</p>';
+    return;
   }
-  document.getElementById('prog-wrap').className = 'prog-wrap';
-  btn.disabled = false;
-  passed.sort(function(a,b){return b.score-a.score;});
-  var html = '<p style="font-size:11px;color:#085041;margin-bottom:10px">🫧 AIフィルタリング済み ' + passed.length + '件</p>';
-  html += passed.map(function(item) {
-    var b = item.blog;
-    return '<a class="rcard" href="' + b.url + '" target="_blank" rel="noopener"><div class="rtitle">' + b.title + '</div><div class="rmeta">' + b.meta + '</div><div class="rdesc">' + b.desc + '</div><div>' + b.tags.map(function(t){return '<span class="rtag">'+t+'</span>';}).join('') + '</div></a>';
+  results.sort(function(a,b){ return (b.score||0)-(a.score||0); });
+  var html = '<p style="font-size:11px;color:#085041;margin-bottom:10px">🫧 審査済みブログ ' + results.length + '件</p>';
+  html += results.map(function(b) {
+    return '<a class="rcard" href="' + b.url + '" target="_blank" rel="noopener">' +
+      '<div class="rtitle">' + b.title + (b.lang !== '日本語' ? ' <span style="font-size:10px;background:#EEEDFE;color:#3C3489;padding:2px 6px;border-radius:99px;margin-left:4px">' + b.lang + '</span>' : '') + '</div>' +
+      '<div class="rmeta">' + b.meta + '</div>' +
+      '<div class="rdesc">' + b.desc + '</div>' +
+      '<div>' + b.tags.map(function(t){return '<span class="rtag">'+t+'</span>';}).join('') + '</div>' +
+      '</a>';
   }).join('');
   document.getElementById('result-area').innerHTML = html;
 };
@@ -570,58 +554,99 @@ document.getElementById('ql-easy').onclick = function() { activeLevel='やさし
 document.getElementById('ql-mid').onclick = function() { activeLevel='ふつう'; document.getElementById('ql-easy').classList.remove('on'); document.getElementById('ql-mid').classList.add('on'); document.getElementById('ql-hard').classList.remove('on'); };
 document.getElementById('ql-hard').onclick = function() { activeLevel='くわしく'; document.getElementById('ql-easy').classList.remove('on'); document.getElementById('ql-mid').classList.remove('on'); document.getElementById('ql-hard').classList.add('on'); };
 
-document.getElementById('gen-btn').onclick = async function() {
+// クイズデータ（JSONから読み込み）
+var allQuizData = [];
+var usedQuizIds = [];
+
+fetch('quiz_data.json')
+  .then(function(r){ return r.json(); })
+  .then(function(data){ allQuizData = data; })
+  .catch(function(){ allQuizData = []; });
+
+function getNextQuiz() {
   var themes = Object.keys(activeThemes).filter(function(t){return activeThemes[t];});
-  if (!themes.length) { alert('テーマを選んでください'); return; }
-  var btn = this;
-  btn.disabled = true;
-  document.getElementById('q-loading').className = 'loading show';
-  document.getElementById('q-card').style.display = 'none';
-  document.getElementById('q-next').style.display = 'none';
-  var prompt = 'IBD専門家として以下の条件でクイズを1問生成してください。テーマ：' + themes.join('、') + ' 難易度：' + activeLevel + ' JSONのみ返してください：{"category":"カテゴリ","question":"問題文","options":["A","B","C","D"],"answer":0,"explanation":"解説"}';
-  try {
-    var res = await fetch('https://api.anthropic.com/v1/messages', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({model:'claude-sonnet-4-6', max_tokens:800, messages:[{role:'user', content:prompt}]})});
-    var data = await res.json();
-    var text = data.content && data.content[0] && data.content[0].text;
-    var jm = text && text.match(/\{[\s\S]*\}/);
-    if (!jm) throw new Error('JSON error');
-    var q = JSON.parse(jm[0]);
-    document.getElementById('q-loading').className = 'loading';
-    document.getElementById('q-cat').textContent = q.category || 'IBD';
-    document.getElementById('q-text').textContent = q.question;
-    document.getElementById('q-exp').className = 'exp';
-    document.getElementById('q-rmsg').textContent = '';
-    var optsEl = document.getElementById('q-opts');
-    optsEl.innerHTML = '';
-    (q.options || []).forEach(function(o, i) {
-      var b = document.createElement('button');
-      b.className = 'opt';
-      b.textContent = o;
-      b.onclick = function() {
+  var filtered = allQuizData.filter(function(q){
+    var matchTheme = themes.some(function(t){ return q.category.indexOf(t) > -1; });
+    var matchLevel = q.level === activeLevel;
+    var notUsed = usedQuizIds.indexOf(q.id) === -1;
+    return matchTheme && matchLevel && notUsed;
+  });
+  // 全問使い切ったらリセット
+  if (!filtered.length) {
+    usedQuizIds = [];
+    filtered = allQuizData.filter(function(q){
+      var matchTheme = themes.some(function(t){ return q.category.indexOf(t) > -1; });
+      return matchTheme && q.level === activeLevel;
+    });
+  }
+  if (!filtered.length) {
+    // レベルを無視して検索
+    filtered = allQuizData.filter(function(q){
+      return themes.some(function(t){ return q.category.indexOf(t) > -1; });
+    });
+  }
+  if (!filtered.length) return null;
+  var idx = Math.floor(Math.random() * filtered.length);
+  var q = filtered[idx];
+  usedQuizIds.push(q.id);
+  return q;
+}
+
+function renderQuiz(q) {
+  document.getElementById('q-cat').textContent = q.category || 'IBD';
+  document.getElementById('q-text').textContent = q.question;
+  document.getElementById('q-exp').className = 'exp';
+  document.getElementById('q-rmsg').textContent = '';
+  var optsEl = document.getElementById('q-opts');
+  optsEl.innerHTML = '';
+  (q.options || []).forEach(function(o, i) {
+    var b = document.createElement('button');
+    b.className = 'opt';
+    b.textContent = o;
+    b.onclick = (function(idx){
+      return function() {
         var allOpts = optsEl.querySelectorAll('.opt');
         for (var j = 0; j < allOpts.length; j++) allOpts[j].disabled = true;
         allOpts[q.answer].classList.add('correct');
-        if (i !== q.answer) b.classList.add('wrong');
-        var ok = i === q.answer;
+        if (idx !== q.answer) b.classList.add('wrong');
+        var ok = idx === q.answer;
         if (ok) qCorrect++;
         qTotal++;
-        document.getElementById('q-rmsg').textContent = ok ? '正解！' : '不正解…';
+        document.getElementById('q-rmsg').textContent = ok ? '正解！' : '不正解… 正解は「' + q.options[q.answer] + '」です';
         document.getElementById('q-rmsg').className = 'r-msg ' + (ok ? 'ok' : 'ng');
-        document.getElementById('q-exp-text').textContent = q.explanation || '';
+        var expTxt = q.explanation || '';
+        if (q.source) expTxt += '
+
+📄 出典：' + q.source;
+        document.getElementById('q-exp-text').textContent = expTxt;
         document.getElementById('q-exp').className = 'exp show';
         document.getElementById('q-next').style.display = 'block';
         document.getElementById('q-acc').textContent = Math.round(qCorrect/qTotal*100) + '%';
         document.getElementById('q-done').textContent = qCorrect + '/' + qTotal;
       };
-      optsEl.appendChild(b);
-    });
-    document.getElementById('q-card').style.display = 'block';
-    btn.disabled = false;
-  } catch(e) {
+    })(i);
+    optsEl.appendChild(b);
+  });
+  document.getElementById('q-card').style.display = 'block';
+}
+
+document.getElementById('gen-btn').onclick = function() {
+  var btn = this;
+  btn.disabled = true;
+  document.getElementById('q-loading').className = 'loading show';
+  document.getElementById('q-card').style.display = 'none';
+  document.getElementById('q-next').style.display = 'none';
+  setTimeout(function(){
+    var q = getNextQuiz();
     document.getElementById('q-loading').className = 'loading';
+    if (!q) {
+      alert('該当するクイズが見つかりませんでした。テーマや難易度を変えてみてください。');
+      btn.disabled = false;
+      return;
+    }
+    renderQuiz(q);
     btn.disabled = false;
-    alert('生成に失敗しました');
-  }
+  }, 600);
 };
 document.getElementById('q-next').onclick = function() { document.getElementById('gen-btn').click(); };
 
