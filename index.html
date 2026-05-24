@@ -636,7 +636,7 @@ document.getElementById('gen-btn').onclick = function() {
 document.getElementById('q-next').onclick = function() { document.getElementById('gen-btn').click(); };
 
 // ===== 記録 =====
-var streak = 7;
+var streak = parseInt(localStorage.getItem('fuwari_streak') || '0');
 var tummyState = null;
 var photoData = null;
 var selectedEmoji = null;
@@ -780,6 +780,30 @@ document.getElementById('save-btn').onclick = function() {
     document.getElementById('saved-title').textContent = '記録しました';
     document.getElementById('saved-msg').textContent = 'つらい日も、記録してくれてありがとう。この記録が、次の診察できっと役に立ちます。';
   }
+  var today = new Date();
+  var dateKey = today.getFullYear() + '-' + (today.getMonth()+1) + '-' + today.getDate();
+  var selChips = document.querySelectorAll('.dchip.on');
+  var chipData = {};
+  for (var ci = 0; ci < selChips.length; ci++) {
+    var cg = selChips[ci].getAttribute('data-group');
+    chipData[cg] = selChips[ci].textContent;
+  }
+  var record = {
+    date: dateKey,
+    tummy: tummyState || 'good',
+    emoji: selectedEmoji,
+    med: document.getElementById('rec-med').value,
+    memo: document.getElementById('rec-memo').value,
+    chips: chipData
+  };
+  var records = getRecords();
+  var found = false;
+  for (var ri = 0; ri < records.length; ri++) {
+    if (records[ri].date === dateKey) { records[ri] = record; found = true; break; }
+  }
+  if (!found) records.push(record);
+  localStorage.setItem('fuwari_records', JSON.stringify(records));
+  localStorage.setItem('fuwari_streak', streak.toString());
   sc.className = 'saved-card show';
   sc.scrollIntoView({behavior:'smooth'});
   setTimeout(function(){sc.className='saved-card';}, 5000);
