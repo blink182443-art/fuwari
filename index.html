@@ -511,8 +511,8 @@ function buildFP(blog) {
 document.getElementById('search-btn').onclick = function() {
   var q = document.getElementById('search-input').value.trim();
   var results = BLOGS.filter(function(b) {
-    var mq = !q || b.title.indexOf(q) > -1 || b.desc.indexOf(q) > -1 || b.tags.some(function(t) { return t.indexOf(q) > -1; });
-    var mp = !aPhase || b.phase === aPhase || b.tags.some(function(t) { return t.indexOf(aPhase) > -1; });
+    var mq = !q || b.title.indexOf(q) > -1 || b.desc.indexOf(q) > -1 || b.tags.some(function(t) { return t.indexOf(q) > -1 || q.indexOf(t) > -1; });
+    var mp = !aPhase || b.phase === aPhase || b.tags.some(function(t) { return t.indexOf(aPhase) > -1 || aPhase.indexOf(t) > -1; });
     return mq && mp;
   });
   if (!results.length) {
@@ -674,6 +674,9 @@ function renderMilestone(n) {
   document.getElementById('m-msg').textContent = n >= 10 ? 'すばらしい記録です🫧' : (msgs[n] || n + '日連続！');
 }
 renderMilestone(streak);
+document.getElementById('t-good').classList.add('on');
+tummyState = 'good';
+(function() { var eb = document.querySelector('.emoji-btn[data-e="🙂"]'); if (eb) { eb.classList.add('on'); selectedEmoji = '🙂'; } })();
 
 document.getElementById('t-good').onclick = function() {
   tummyState = 'good';
@@ -906,12 +909,7 @@ document.getElementById('review-doctor-btn').onclick = function() {
 };
 
 // ===== つながる =====
-var CONN_POSTS = [
-  {id:1, who:'付き添いの母', avatar:'👩', stage:'acute', stageLabel:'急性期・入院中', when:'2時間前', body:'今日で入院17日目。娘が「ママ一緒に寝てね」って言ってくれた。狭いベッドで二人で寝た。それで十分だと思った。', likes:24, liked:false},
-  {id:2, who:'IBDパパ', avatar:'👨', stage:'maintain', stageLabel:'治療継続中', when:'5時間前', body:'レミケードの投与から3年。先生に「数値安定してますね」って言ってもらえた。続けてきてよかった。', likes:41, liked:false},
-  {id:3, who:'寛解中の本人', avatar:'🧒', stage:'remission', stageLabel:'寛解中', when:'昨日', body:'今日、給食を全部食べられた。それだけで泣きそうになった。普通のことが、全然普通じゃなかったから。', likes:87, liked:false},
-  {id:4, who:'付き添いの父', avatar:'👨', stage:'acute', stageLabel:'急性期・入院中', when:'昨日', body:'付き添いができなくて、病院の庭から昼にシャボン玉を飛ばした。届いたかどうかわからないけど、飛ばし続けた。', likes:63, liked:false}
-];
+var CONN_POSTS = [];
 var connFilter = 'all';
 var connStage = null;
 var connMode = 'watch';
