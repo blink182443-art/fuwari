@@ -417,6 +417,9 @@ input[type="file"]{display:none}
 <input type="file" id="file-library" accept="image/*">
 
 <script>
+// デプロイ後にWorkerのURLに書き換えてください
+var WORKER_URL = 'https://fuwari-worker.blink182443-9fb.workers.dev';
+
 window.onload = function() {
 
 // ===== 画面遷移 =====
@@ -615,28 +618,44 @@ function renderQuiz(q) {
   document.getElementById('q-card').style.display = 'block';
 }
 
-document.getElementById('gen-btn').onclick = function() {
+document.getElementById('gen-btn').onclick = async function() {
   var btn = this;
   btn.disabled = true;
   document.getElementById('q-loading').className = 'loading show';
   document.getElementById('q-card').style.display = 'none';
   document.getElementById('q-next').style.display = 'none';
-  setTimeout(function(){
-    var q = getNextQuiz();
+  var themes = Object.keys(activeThemes).filter(function(t){return activeThemes[t];});
+  var theme = themes.length > 0 ? themes[0] : 'IBD基礎';
+  try {
+    var res = await fetch(WORKER_URL + '/api/quiz', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({theme: theme, level: activeLevel})
+    });
+    var q = await res.json();
     document.getElementById('q-loading').className = 'loading';
-    if (!q) {
-      alert('該当するクイズが見つかりませんでした。テーマや難易度を変えてみてください。');
+    if (!q || !q.question) {
+      alert('クイズの生成に失敗しました。もう一度お試しください。');
       btn.disabled = false;
       return;
     }
     renderQuiz(q);
     btn.disabled = false;
-  }, 600);
+  } catch(e) {
+    document.getElementById('q-loading').className = 'loading';
+    var q = getNextQuiz();
+    if (!q) {
+      alert('クイズが見つかりませんでした。テーマや難易度を変えてみてください。');
+    } else {
+      renderQuiz(q);
+    }
+    btn.disabled = false;
+  }
 };
 document.getElementById('q-next').onclick = function() { document.getElementById('gen-btn').click(); };
 
 // ===== 記録 =====
-var streak = parseInt(localStorage.getItem('fuwari_streak') || '0');
+var streak = 7;
 var tummyState = null;
 var photoData = null;
 var selectedEmoji = null;
@@ -733,15 +752,11 @@ document.getElementById('analyze-btn').onclick = async function() {
   btn.disabled = true;
   document.getElementById('analyze-loading').className = 'loading show';
   document.getElementById('ai-result').className = 'ai-result';
-  var prompt = '記録補助AIです。添付画像はIBD患者の排泄物の写真です。断定せず参考として判定してください。JSONのみ：{"blood":"なし|少し|中程度|多い","state":"普通便|軟便|下痢|水様便","comment":"50字以内のコメント"}';
   try {
-    var res = await fetch('https://api.anthropic.com/v1/messages', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({model:'claude-sonnet-4-6', max_tokens:300, messages:[{role:'user', content:[{type:'image', source:{type:'base64', media_type:'image/jpeg', data:photoData}},{type:'text', text:prompt}]}]})});
-    var data = await res.json();
-    var raw = data.content && data.content[0] && data.content[0].text;
-    var jm = raw && raw.match(/\{[\s\S]*?\}/);
-    var result = jm ? JSON.parse(jm[0]) : null;
+    var res = await fetch(WORKER_URL + '/api/analyze-photo', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({image:photoData, mediaType:'image/jpeg'})});
+    var result = await res.json();
     document.getElementById('analyze-loading').className = 'loading';
-    if (result) {
+    if (result && result.blood) {
       document.getElementById('ai-result-txt').textContent = '血便：' + (result.blood||'—') + ' / 状態：' + (result.state||'—') + ' / ' + (result.comment||'');
       document.getElementById('ai-result').className = 'ai-result show';
     }
@@ -780,30 +795,6 @@ document.getElementById('save-btn').onclick = function() {
     document.getElementById('saved-title').textContent = '記録しました';
     document.getElementById('saved-msg').textContent = 'つらい日も、記録してくれてありがとう。この記録が、次の診察できっと役に立ちます。';
   }
-  var today = new Date();
-  var dateKey = today.getFullYear() + '-' + (today.getMonth()+1) + '-' + today.getDate();
-  var selChips = document.querySelectorAll('.dchip.on');
-  var chipData = {};
-  for (var ci = 0; ci < selChips.length; ci++) {
-    var cg = selChips[ci].getAttribute('data-group');
-    chipData[cg] = selChips[ci].textContent;
-  }
-  var record = {
-    date: dateKey,
-    tummy: tummyState || 'good',
-    emoji: selectedEmoji,
-    med: document.getElementById('rec-med').value,
-    memo: document.getElementById('rec-memo').value,
-    chips: chipData
-  };
-  var records = getRecords();
-  var found = false;
-  for (var ri = 0; ri < records.length; ri++) {
-    if (records[ri].date === dateKey) { records[ri] = record; found = true; break; }
-  }
-  if (!found) records.push(record);
-  localStorage.setItem('fuwari_records', JSON.stringify(records));
-  localStorage.setItem('fuwari_streak', streak.toString());
   sc.className = 'saved-card show';
   sc.scrollIntoView({behavior:'smooth'});
   setTimeout(function(){sc.className='saved-card';}, 5000);
@@ -1003,13 +994,10 @@ document.getElementById('conn-submit').onclick = async function() {
   var btn = this;
   btn.disabled = true;
   btn.textContent = '確認中…';
-  var prompt = '投稿チェック。不可：攻撃・個人情報・商品・自傷・絶望的内容。可：誠実な気持ち。JSONのみ：{"verdict":"ok","support":"msg"} 内容：' + txt;
   try {
-    var res = await fetch('https://api.anthropic.com/v1/messages', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({model:'claude-sonnet-4-6', max_tokens:150, messages:[{role:'user', content:prompt}]})});
-    var data = await res.json();
-    var raw = data.content && data.content[0] && data.content[0].text;
-    var jm = raw && raw.match(/\{[\s\S]*?\}/);
-    var result = jm ? JSON.parse(jm[0]) : {verdict:'ok'};
+    var res = await fetch(WORKER_URL + '/api/check-post', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text:txt})});
+    var result = await res.json();
+    if (!result || !result.verdict) result = {verdict:'ok'};
     if (result.verdict === 'ng') {
       document.getElementById('check-ng').innerHTML = '<div style="font-size:22px;margin-bottom:6px">💙</div><div style="font-size:13px;color:#555;line-height:1.7">' + (result.support || '今の気持ちは、信頼できる人や専門家に話してみてください。') + '</div>';
       document.getElementById('check-ng').className = 'check-ng show';
