@@ -664,7 +664,9 @@ document.getElementById('search-btn').onclick = function() {
   results.sort(function(a,b){ return (b.score||0)-(a.score||0); });
   var html = '<p style="font-size:11px;color:#085041;margin-bottom:10px">🫧 審査済みブログ ' + results.length + '件</p>';
   html += results.map(function(b) {
-    return '<a class="rcard" href="' + b.url + '" target="_blank" rel="noopener">' +
+    var author = b.meta.split('・')[0];
+    var searchUrl = 'https://www.google.com/search?q=' + encodeURIComponent(b.title + ' ' + author);
+    return '<a class="rcard" href="' + searchUrl + '" target="_blank" rel="noopener">' +
       '<div class="rtitle">' + b.title + (b.lang !== '日本語' ? ' <span style="font-size:10px;background:#EEEDFE;color:#3C3489;padding:2px 6px;border-radius:99px;margin-left:4px">' + b.lang + '</span>' : '') + '</div>' +
       '<div class="rmeta">' + b.meta + '</div>' +
       '<div class="rdesc">' + b.desc + '</div>' +
